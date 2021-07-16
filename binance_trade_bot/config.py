@@ -14,6 +14,8 @@ class Config:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
         config = configparser.ConfigParser()
         config["DEFAULT"] = {
             "bridge": "USDT",
+            "time_interval": "1",
+            "yield_interval": "100",
             "scout_multiplier": "5",
             "scout_sleep_time": "5",
             "hourToKeepScoutHistory": "1",
@@ -31,6 +33,9 @@ class Config:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
 
         self.BRIDGE_SYMBOL = os.environ.get("BRIDGE_SYMBOL") or config.get(USER_CFG_SECTION, "bridge")
         self.BRIDGE = Coin(self.BRIDGE_SYMBOL, False)
+
+        self.TIME_INTERVAL = os.environ.get("TIME_INTERVAL") or config.get(USER_CFG_SECTION, "time_interval")
+        self.YIELD_INTERVAL = os.environ.get("YIELD_INTERVAL") or config.get(USER_CFG_SECTION, "yield_interval")
 
         # Prune settings
         self.SCOUT_HISTORY_PRUNE_TIME = float(

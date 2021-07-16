@@ -52,10 +52,13 @@ class MockBinanceManager(BinanceAPIManager):
                 end_date = datetime.now()
             end_date = end_date.strftime("%d %b %Y %H:%M:%S")
             self.logger.info(f"Fetching prices for {ticker_symbol} between {self.datetime} and {end_date}")
+            interval=self.config.TIME_INTERVAL
             for result in self.binance_client.get_historical_klines(
-                ticker_symbol, "1m", target_date, end_date, limit=1000
+                ticker_symbol, interval + "m", target_date, end_date, limit=1000
             ):
                 date = datetime.utcfromtimestamp(result[0] / 1000).strftime("%d %b %Y %H:%M:%S")
+                if date > end_date:
+                    break
                 price = float(result[1])
                 cache[f"{ticker_symbol} - {date}"] = price
             cache.commit()
@@ -139,8 +142,6 @@ class MockDatabase(Database):
 def backtest(
     start_date: datetime = None,
     end_date: datetime = None,
-    interval=1,
-    yield_interval=100,
     start_balances: Dict[str, float] = None,
     starting_coin: str = None,
     config: Config = None,
@@ -167,6 +168,9 @@ def backtest(
     db.set_coins(config.SUPPORTED_COIN_LIST)
     manager = MockBinanceManager(config, db, logger, start_date, start_balances)
 
+    interval=int(config.TIME_INTERVAL)
+    yield_interval=int(config.YIELD_INTERVAL)
+
     starting_coin = db.get_coin(starting_coin or config.SUPPORTED_COIN_LIST[0])
     if manager.get_currency_balance(starting_coin.symbol) == 0:
         manager.buy_alt(starting_coin, config.BRIDGE)
@@ -181,7 +185,7 @@ def backtest(
 
     yield manager
 
-    n = 1
+    n = 0
     try:
         while manager.datetime < end_date:
             try:
@@ -189,9 +193,9 @@ def backtest(
             except Exception:  # pylint: disable=broad-except
                 logger.warning(format_exc())
             manager.increment(interval)
-            if n % yield_interval == 0:
+            if n > 0 and n % yield_interval == 0:
                 yield manager
-            n += 1
+            n += interval
     except KeyboardInterrupt:
         pass
     cache.close()
