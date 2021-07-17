@@ -13,6 +13,8 @@ from .logger import Logger
 from .models import Coin, Pair
 from .strategies import get_strategy
 
+import sys
+
 cache = SqliteDict("data/backtest_cache.db")
 
 
@@ -52,7 +54,7 @@ class MockBinanceManager(BinanceAPIManager):
                 end_date = datetime.now()
             end_date = end_date.strftime("%d %b %Y %H:%M:%S")
             self.logger.info(f"Fetching prices for {ticker_symbol} between {self.datetime} and {end_date}")
-            interval=self.config.TIME_INTERVAL
+            interval = self.config.TIME_INTERVAL
             for result in self.binance_client.get_historical_klines(
                 ticker_symbol, interval + "m", target_date, end_date, limit=1000
             ):
@@ -142,8 +144,11 @@ class MockDatabase(Database):
 def backtest(
     start_date: datetime = None,
     end_date: datetime = None,
+    interval = 1,
+    yield_interval = 100,
     start_balances: Dict[str, float] = None,
     starting_coin: str = None,
+    bridge: str = None,
     config: Config = None,
 ):
     """
@@ -155,10 +160,14 @@ def backtest(
     :param yield_interval: After how many intervals should the manager be yielded
     :param start_balances: A dictionary of initial coin values. Default: {BRIDGE: 100}
     :param starting_coin: The coin to start on. Default: first coin in coin list
+    :param bridge: The bridge coin
 
     :return: The final coin balances
     """
     config = config or Config()
+    if bridge != None:
+        config.BRIDGE_SYMBOL = bridge
+        config.BRIDGE = Coin(config.BRIDGE_SYMBOL, False)
     logger = Logger("backtesting", enable_notifications=False)
 
     end_date = end_date or datetime.today()
@@ -168,10 +177,11 @@ def backtest(
     db.set_coins(config.SUPPORTED_COIN_LIST)
     manager = MockBinanceManager(config, db, logger, start_date, start_balances)
 
-    interval=int(config.TIME_INTERVAL)
-    yield_interval=int(config.YIELD_INTERVAL)
+    interval = interval or int(config.TIME_INTERVAL)
+    yield_interval = yield_interval or int(config.YIELD_INTERVAL)
 
-    starting_coin = db.get_coin(starting_coin or config.SUPPORTED_COIN_LIST[0])
+    starting_coin = db.get_coin(starting_coin or config.CURRENT_COIN_SYMBOL or config.SUPPORTED_COIN_LIST[0])
+
     if manager.get_currency_balance(starting_coin.symbol) == 0:
         manager.buy_alt(starting_coin, config.BRIDGE)
     db.set_current_coin(starting_coin)
