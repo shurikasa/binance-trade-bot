@@ -6,13 +6,15 @@ if __name__ == "__main__":
     interval = 1
     starting_coin = None
     bridge = None
+    start_balance = 100
     if (len(sys.argv) > 1):
         interval = int(sys.argv[1])
         starting_coin = sys.argv[2]
         bridge = sys.argv[3]
+        start_balance = sys.argv[4]
     print(f"Starting coin: {starting_coin}, bridge: {bridge}, interval: {interval}")
     history = []
-    for manager in backtest(datetime(2021, 4, 26), datetime(2021, 7, 14), interval = interval, starting_coin = starting_coin, bridge = bridge):
+    for manager in backtest(datetime(2021, 4, 26), datetime(2021, 7, 14), interval = interval, starting_coin = starting_coin, bridge = bridge, start_balances = {starting_coin: start_balance}):
         btc_value = manager.collate_coins("BTC")
         bridge_value = manager.collate_coins(manager.config.BRIDGE.symbol)
         history.append((btc_value, bridge_value))
